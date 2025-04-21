@@ -1757,7 +1757,7 @@ def main():
         help="Experimental: instead of contact probabilities form use binary contacts for extra metrics calculation",
     )
     pred_group.add_argument("--data", help="Path to AlphaFold2 weights directory.")
-    pred_group.add_argument("--cyclic", default=False, action="store_true")
+    pred_group.add_argument("--cyclic", help="Apply cyclic complex offset with bugfix.", default=False, action="store_true")
 
     relax_group = parser.add_argument_group("Relaxation arguments", "")
     relax_group.add_argument(
