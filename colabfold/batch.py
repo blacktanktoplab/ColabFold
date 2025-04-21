@@ -352,6 +352,7 @@ def predict_structure(
     save_recycles: bool = False,
     calc_extra_ptm: bool = False,
     use_probs_extra: bool = True,
+    cyclic: bool = False,
 ):
     """Predicts structure using AlphaFold for the given sequence."""
     mean_scores = []
@@ -374,11 +375,57 @@ def predict_structure(
             #########################
             # process input features
             #########################
+            def cyclic_offset(L):
+                """Calculate cyclic offset matrix with bug fix applied.
+                
+                Args:
+                    L: Length of the sequence
+                    
+                Returns:
+                    Modified offset matrix accounting for cyclic topology
+                """
+                i = np.arange(L)
+                ij = np.stack([i,i+L],-1)
+                offset = i[:,None] - i[None,:]
+                c_offset = np.abs(ij[:,None,:,None] - ij[None,:,None,:]).min((2,3))
+                # Apply bugfix always
+                a = c_offset < np.abs(offset)
+                c_offset[a] = -c_offset[a]
+                return np.sign(offset) * c_offset
+
+            def index_extend(idx, binder_len, target_len, length=50):
+                """Extend indices for complex residues.
+                
+                Args:
+                    idx: Original residue indices
+                    binder_len: Length of the binder sequence
+                    target_len: Length of the target sequence
+                    length: Gap to insert between chains
+                    
+                Returns:
+                    Extended indices
+                """
+                idx[-binder_len:] = idx[-binder_len:] + idx[target_len - 1] + length
+                return idx
+            
             if "multimer" in model_type:
                 if model_num == 0 and seed_num == 0:
                     # TODO: add pad_input_mulitmer()
                     input_features = feature_dict
                     input_features["asym_id"] = input_features["asym_id"] - input_features["asym_id"][...,0]
+                    if cyclic:
+                        logger.info("Applying multimer cyclic complex offset with bugfix")
+                        idx = input_features["residue_index"]
+                        idx = index_extend(idx, sequences_lengths[1], sequences_lengths[0])
+                        offset = np.array(idx[:,None] - idx[None,:])
+                        logger.info("bugfix mulitimer cyclic complex offset")
+                        c_offset = cyclic_offset(sequences_lengths[1])
+                        input_features["offset"] = offset
+                        logger.info(c_offset)
+                        offset[sequences_lengths[0]:,sequences_lengths[0]:] = c_offset
+                        input_features["offset"] = offset
+                    else:
+                        logger.info("Not Applying multimer cyclic complex offset without bugfix")
             else:
                 if model_num == 0:
                     input_features = model_runner.process_features(feature_dict, random_seed=seed)
@@ -388,6 +435,23 @@ def predict_structure(
                         input_features = pad_input(input_features, model_runner,
                             model_name, pad_len, use_templates)
                         logger.info(f"Padding length to {pad_len}")
+                    if cyclic:
+                        if is_complex:
+                            logger.info("Applying cyclic complex offset with bugfix")
+                            idx = input_features["residue_index"][0]
+                            idx = index_extend(idx, sequences_lengths[1], sequences_lengths[0])
+                            offset = np.array(idx[:,None] - idx[None,:])
+                            logger.info("bugfix cyclic complex offset")
+                            c_offset = cyclic_offset(sequences_lengths[1])
+                            logger.info(c_offset)
+                            offset[sequences_lengths[0]:,sequences_lengths[0]:] = c_offset
+                            input_features["offset"] = np.tile(offset[None],(r,1,1))
+                        else:
+                            logger.info("Applying default cyclic offset with bugfix")
+                            input_features["offset"] = np.tile(cyclic_offset(seq_len)[None],(r,1,1))
+                            logger.info(cyclic_offset(seq_len))
+                    else:
+                        logger.info("Not Applying cyclic complex offset without bugfix")
 
 
             tag = f"{model_type}_{model_name}_seed_{seed:03d}"
@@ -1077,6 +1141,7 @@ def run(
     feature_dict_callback: Callable[[Any], Any] = None,
     calc_extra_ptm: bool = False,
     use_probs_extra: bool = True,
+    cyclic: bool = False,
     **kwargs
 ):
     # check what device is available
@@ -1212,6 +1277,7 @@ def run(
         "version": importlib_metadata.version("colabfold"),
         "calc_extra_ptm": calc_extra_ptm,
         "use_probs_extra": use_probs_extra,
+        "cyclic":cyclic,
     }
     config_out_file = result_dir.joinpath("config.json")
     config_out_file.write_text(json.dumps(config, indent=4))
@@ -1420,6 +1486,7 @@ def run(
                     save_recycles=save_recycles,
                     calc_extra_ptm=calc_extra_ptm,
                     use_probs_extra=use_probs_extra,
+                    cyclic=cyclic,
                 )
                 
                 result_files += results["result_files"]
@@ -1690,6 +1757,7 @@ def main():
         help="Experimental: instead of contact probabilities form use binary contacts for extra metrics calculation",
     )
     pred_group.add_argument("--data", help="Path to AlphaFold2 weights directory.")
+    pred_group.add_argument("--cyclic", default=False, action="store_true")
 
     relax_group = parser.add_argument_group("Relaxation arguments", "")
     relax_group.add_argument(
@@ -1923,6 +1991,7 @@ def main():
         save_recycles=args.save_recycles,
         calc_extra_ptm=args.calc_extra_ptm,
         use_probs_extra=use_probs_extra,
+        cyclic=args.cyclic,
     )
 
 if __name__ == "__main__":
