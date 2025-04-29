@@ -77,8 +77,7 @@ def load_models_and_params(
     use_dropout: bool = False,
     save_all: bool = False,
     calc_extra_ptm: bool = False,
-    use_probs_extra: bool = True,
-    cyclic: bool = False,
+    use_probs_extra: bool = True
 ) -> List[Tuple[str, model.RunModel, haiku.Params]]:
     """We use only two actual models and swap the parameters to avoid recompiling.
 
