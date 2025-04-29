@@ -449,7 +449,7 @@ def predict_structure(
                         else:
                             logger.info("Applying default cyclic offset with bugfix")
                             input_features["offset"] = np.tile(cyclic_offset(seq_len)[None],(r,1,1))
-                            logger.info(cyclic_offset(seq_len))
+                            logger.info(f"\n{cyclic_offset(seq_len)}\n")
                     else:
                         logger.info("Not Applying cyclic complex offset without bugfix")
 
