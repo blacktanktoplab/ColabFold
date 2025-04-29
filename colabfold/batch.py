@@ -421,7 +421,7 @@ def predict_structure(
                         logger.info("bugfix mulitimer cyclic complex offset")
                         c_offset = cyclic_offset(sequences_lengths[1])
                         input_features["offset"] = offset
-                        logger.info(c_offset)
+                        logger.info(f"\n{c_offset}\n")
                         offset[sequences_lengths[0]:,sequences_lengths[0]:] = c_offset
                         input_features["offset"] = offset
                     else:
@@ -443,7 +443,7 @@ def predict_structure(
                             offset = np.array(idx[:,None] - idx[None,:])
                             logger.info("bugfix cyclic complex offset")
                             c_offset = cyclic_offset(sequences_lengths[1])
-                            logger.info(c_offset)
+                            logger.info(f"\n{c_offset}\n")
                             offset[sequences_lengths[0]:,sequences_lengths[0]:] = c_offset
                             input_features["offset"] = np.tile(offset[None],(r,1,1))
                         else:
