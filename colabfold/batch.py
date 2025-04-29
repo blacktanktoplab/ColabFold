@@ -414,16 +414,22 @@ def predict_structure(
                     input_features = feature_dict
                     input_features["asym_id"] = input_features["asym_id"] - input_features["asym_id"][...,0]
                     if cyclic:
-                        logger.info("Applying multimer cyclic complex offset with bugfix")
-                        idx = input_features["residue_index"]
-                        idx = index_extend(idx, sequences_lengths[1], sequences_lengths[0])
-                        offset = np.array(idx[:,None] - idx[None,:])
-                        logger.info("bugfix mulitimer cyclic complex offset")
-                        c_offset = cyclic_offset(sequences_lengths[1])
-                        input_features["offset"] = offset
-                        logger.info(f"\n{c_offset}\n")
-                        offset[sequences_lengths[0]:,sequences_lengths[0]:] = c_offset
-                        input_features["offset"] = offset
+                        if is_complex:
+                            logger.info("Applying multimer cyclic complex offset with bugfix")
+                            idx = input_features["residue_index"]
+                            idx = index_extend(idx, sequences_lengths[1], sequences_lengths[0])
+                            offset = np.array(idx[:,None] - idx[None,:])
+                            logger.info("bugfix mulitimer cyclic complex offset")
+                            c_offset = cyclic_offset(sequences_lengths[1])
+                            input_features["offset"] = offset
+                            logger.info(f"\n{c_offset}\n")
+                            offset[sequences_lengths[0]:,sequences_lengths[0]:] = c_offset
+                            input_features["offset"] = offset
+                        else:
+                            logger.info("Applying default cyclic offset with bugfix")
+                            c_offset = cyclic_offset(sequences_lengths[0])
+                            logger.info(f"\n{c_offset}\n")
+                            input_features["offset"] = c_offset
                     else:
                         logger.info("Not Applying multimer cyclic complex offset without bugfix")
             else:
