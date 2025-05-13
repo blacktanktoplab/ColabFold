@@ -417,13 +417,14 @@ def predict_structure(
                         if is_complex:
                             logger.info("Applying multimer cyclic complex offset with bugfix")
                             idx = input_features["residue_index"]
-                            idx = index_extend(idx, sequences_lengths[1], sequences_lengths[0])
+                            complex_length = sum(sequences_lengths[:-1])
+                            idx = index_extend(idx, sequences_lengths[-1], complex_length)
                             offset = np.array(idx[:,None] - idx[None,:])
                             logger.info("bugfix mulitimer cyclic complex offset")
-                            c_offset = cyclic_offset(sequences_lengths[1])
+                            c_offset = cyclic_offset(sequences_lengths[-1])
                             input_features["offset"] = offset
                             logger.info(f"\n{c_offset}\n")
-                            offset[sequences_lengths[0]:,sequences_lengths[0]:] = c_offset
+                            offset[complex_length:,complex_length:] = c_offset
                             input_features["offset"] = offset
                         else:
                             logger.info("Applying default cyclic offset with bugfix")
@@ -445,12 +446,13 @@ def predict_structure(
                         if is_complex:
                             logger.info("Applying cyclic complex offset with bugfix")
                             idx = input_features["residue_index"][0]
-                            idx = index_extend(idx, sequences_lengths[1], sequences_lengths[0])
+                            complex_length = sum(sequences_lengths[:-1])
+                            idx = index_extend(idx, sequences_lengths[-1], complex_length)
                             offset = np.array(idx[:,None] - idx[None,:])
                             logger.info("bugfix cyclic complex offset")
-                            c_offset = cyclic_offset(sequences_lengths[1])
+                            c_offset = cyclic_offset(sequences_lengths[-1])
                             logger.info(f"\n{c_offset}\n")
-                            offset[sequences_lengths[0]:,sequences_lengths[0]:] = c_offset
+                            offset[complex_length:,complex_length:] = c_offset
                             input_features["offset"] = np.tile(offset[None],(r,1,1))
                         else:
                             logger.info("Applying default cyclic offset with bugfix")
